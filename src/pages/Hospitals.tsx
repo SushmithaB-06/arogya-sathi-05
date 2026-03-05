@@ -1,50 +1,45 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { MapPin, Phone, Navigation, Loader2 } from "lucide-react";
+import { Phone, Navigation, Loader2, MapPin, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
-interface Hospital {
-  name: string;
-  address: string;
-  phone: string;
-  distance: string;
-  lat: number;
-  lng: number;
-}
-
-const defaultHospitals: Hospital[] = [
-  { name: "Primary Health Centre", address: "Village Main Road", phone: "108", distance: "2 km", lat: 12.9716, lng: 77.5946 },
-  { name: "Community Health Centre", address: "Block Headquarters", phone: "102", distance: "8 km", lat: 12.9816, lng: 77.6046 },
-  { name: "District Hospital", address: "District Town", phone: "104", distance: "25 km", lat: 12.9916, lng: 77.6146 },
-  { name: "Government General Hospital", address: "City Center", phone: "112", distance: "40 km", lat: 13.0016, lng: 77.6246 },
-];
-
 const Hospitals = () => {
   const { t } = useLanguage();
-  const [hospitals] = useState<Hospital[]>(defaultHospitals);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mapUrl, setMapUrl] = useState("");
 
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          // Embed OpenStreetMap with hospitals nearby
+          setMapUrl(
+            `https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng - 0.05},${loc.lat - 0.05},${loc.lng + 0.05},${loc.lat + 0.05}&layer=mapnik&marker=${loc.lat},${loc.lng}`
+          );
           setLoading(false);
         },
-        () => setLoading(false)
+        () => {
+          setLoading(false);
+        }
       );
     } else {
       setLoading(false);
     }
   }, []);
 
-  const openInMaps = (hospital: Hospital) => {
-    const url = userLocation
-      ? `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${hospital.lat},${hospital.lng}`
-      : `https://www.google.com/maps/search/hospital+near+me`;
-    window.open(url, "_blank");
+  const openHospitalSearch = () => {
+    if (userLocation) {
+      window.open(
+        `https://www.google.com/maps/search/hospital/@${userLocation.lat},${userLocation.lng},14z`,
+        "_blank"
+      );
+    } else {
+      window.open("https://www.google.com/maps/search/hospital+near+me", "_blank");
+    }
   };
 
   return (
@@ -53,85 +48,92 @@ const Hospitals = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="mb-2 text-3xl font-bold text-foreground">{t("findHospital")}</h1>
           <p className="mb-6 text-muted-foreground">
-            {userLocation ? "📍 Location detected" : loading ? "Getting your location..." : "📍 Location not available"}
+            {userLocation ? "📍 Location detected" : loading ? "Getting your location..." : "📍 Enable location to find hospitals"}
           </p>
 
-          {/* Search nearby button */}
+          {/* Emergency Ambulance Call - Big prominent button */}
+          <motion.a
+            href="tel:102"
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            className="pulse-emergency mb-8 flex items-center justify-center gap-4 rounded-2xl bg-gradient-emergency p-6 text-emergency-foreground shadow-lg transition-transform active:scale-95"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card/20 backdrop-blur-sm">
+              <Phone className="h-7 w-7" />
+            </div>
+            <div className="text-left">
+              <div className="text-2xl font-bold">🚑 Call Ambulance</div>
+              <div className="text-lg opacity-90">Dial 102 — Free Emergency Service</div>
+            </div>
+          </motion.a>
+
+          {/* Search Hospitals on Map */}
           <Button
-            onClick={() => window.open("https://www.google.com/maps/search/hospital+near+me", "_blank")}
+            onClick={openHospitalSearch}
             size="lg"
-            className="mb-8 w-full gap-2 rounded-xl bg-gradient-hero py-6 text-lg text-primary-foreground"
+            className="mb-6 w-full gap-2 rounded-xl bg-gradient-hero py-6 text-lg text-primary-foreground"
           >
             <Navigation className="h-5 w-5" />
-            {t("findHospital")}
+            🏥 Find Hospitals on Google Maps
+            <ExternalLink className="h-4 w-4" />
           </Button>
 
-          {/* Emergency numbers */}
-          <div className="mb-8 rounded-2xl bg-gradient-emergency p-6 text-emergency-foreground">
-            <h3 className="mb-3 text-lg font-bold">🚨 Emergency Numbers</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Ambulance", number: "108" },
-                { label: "Emergency", number: "112" },
-                { label: "Health Helpline", number: "104" },
-                { label: "Women Helpline", number: "181" },
-              ].map((em) => (
+          {/* Embedded Map */}
+          <div className="mb-8 overflow-hidden rounded-2xl border border-border shadow-card">
+            {loading ? (
+              <div className="flex h-80 items-center justify-center bg-card">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : mapUrl ? (
+              <div className="relative">
+                <iframe
+                  src={mapUrl}
+                  className="h-80 w-full border-0"
+                  allowFullScreen
+                  loading="lazy"
+                  title="Nearby hospitals map"
+                />
                 <a
-                  key={em.number}
-                  href={`tel:${em.number}`}
-                  className="flex items-center gap-2 rounded-lg bg-card/20 px-3 py-2 font-medium backdrop-blur-sm transition-colors hover:bg-card/30"
+                  href={`https://www.openstreetmap.org/?mlat=${userLocation?.lat}&mlon=${userLocation?.lng}#map=14/${userLocation?.lat}/${userLocation?.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg bg-card/90 px-3 py-1.5 text-sm font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-card"
                 >
-                  <Phone className="h-4 w-4" />
-                  {em.label}: {em.number}
+                  <MapPin className="h-3 w-3" />
+                  Open Full Map
                 </a>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="flex h-80 flex-col items-center justify-center bg-card p-8 text-center">
+                <MapPin className="mb-4 h-12 w-12 text-muted-foreground/30" />
+                <p className="text-lg font-medium text-muted-foreground">
+                  Enable location access to see the map
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  You can still search for hospitals using the button above
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Hospital List */}
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {hospitals.map((hospital, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="rounded-2xl border border-border bg-card p-5 shadow-card"
-                >
-                  <div className="mb-3 flex items-start justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">{hospital.name}</h3>
-                      <p className="text-sm text-muted-foreground">{hospital.address}</p>
-                    </div>
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-                      {hospital.distance}
-                    </span>
-                  </div>
-                  <div className="flex gap-3">
-                    <a
-                      href={`tel:${hospital.phone}`}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                    >
-                      <Phone className="h-4 w-4" />
-                      {t("callHospital")}
-                    </a>
-                    <button
-                      onClick={() => openInMaps(hospital)}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 font-medium text-foreground transition-colors hover:bg-secondary"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      Map
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
+          {/* Quick Tips */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+            <h3 className="mb-4 text-lg font-semibold text-foreground">💡 Quick Tips</h3>
+            <ul className="space-y-3 text-muted-foreground">
+              <li className="flex items-start gap-3">
+                <span className="mt-1 text-xl">🚑</span>
+                <span><strong className="text-foreground">Dial 102</strong> for free government ambulance service anywhere in India</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1 text-xl">🏥</span>
+                <span>Visit your nearest <strong className="text-foreground">Primary Health Centre (PHC)</strong> for basic treatment</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1 text-xl">📱</span>
+                <span>Click the <strong className="text-foreground">"Find Hospitals"</strong> button to see real hospitals near you on the map</span>
+              </li>
+            </ul>
+          </div>
         </motion.div>
       </div>
     </div>

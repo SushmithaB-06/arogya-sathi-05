@@ -1,12 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import LanguageSelector from "./LanguageSelector";
-import { Heart, Stethoscope, MapPin, Bell, Menu, X } from "lucide-react";
+import { Heart, Stethoscope, MapPin, Bell, Menu, X, LogIn, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const Navbar = () => {
   const { t } = useLanguage();
+  const { user, signOut } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -18,6 +22,11 @@ const Navbar = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out successfully");
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-lg">
@@ -47,8 +56,25 @@ const Navbar = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <LanguageSelector />
+          {user ? (
+            <div className="hidden items-center gap-2 md:flex">
+              <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+              </span>
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Link to="/login" className="hidden md:block">
+              <Button variant="outline" size="sm" className="gap-1">
+                <LogIn className="h-4 w-4" />
+                Login
+              </Button>
+            </Link>
+          )}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="rounded-lg p-2 text-foreground hover:bg-secondary md:hidden"
@@ -83,6 +109,26 @@ const Navbar = () => {
                   {item.label}
                 </Link>
               ))}
+              <div className="mt-2 border-t border-border pt-2">
+                {user ? (
+                  <button
+                    onClick={() => { handleSignOut(); setMobileOpen(false); }}
+                    className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-muted-foreground hover:bg-secondary"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Sign Out
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-primary hover:bg-secondary"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    Login / Sign Up
+                  </Link>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
