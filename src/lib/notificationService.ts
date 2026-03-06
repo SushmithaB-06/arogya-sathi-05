@@ -32,11 +32,10 @@ export function showReminderNotification(medicineName: string) {
       body: `Time to take: ${medicineName}`,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      vibrate: [300, 100, 300, 100, 300],
       tag: `reminder-${medicineName}`,
       requireInteraction: true, // Stays until user interacts (like an alarm)
       silent: false,
-    });
+    } as NotificationOptions);
   }).catch(() => {
     // Fallback to regular notification
     new Notification(`💊 Medicine Reminder`, {
